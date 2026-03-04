@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+body {
+  background-color: #0a0a0a;
+  background-image: radial-gradient(#1f1f1f 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #ffffff, #9ca3af);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+th, td {
+  transition: all 0.3s ease;
+}
+
+th {
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+td {
+  background-color: rgba(31, 31, 31, 0.8);
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+}
+
+td:first-child {
+  border-left: 1px solid #333;
+  border-radius: 8px 0 0 8px;
+}
+
+td:last-child {
+  border-right: 1px solid #333;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Cell highlight when filled */
+.attempted-cell {
+  background: #2a2a2a !important;
+  border: 1px solid #4a4a4a !important;
+  color: #fff !important;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+/* Circular Progress */
+.circle-bg {
+  fill: none;
+  stroke: #262626;
+  stroke-width: 3.8;
+}
+
+.circle {
+  fill: none;
+  stroke: #3b82f6;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
