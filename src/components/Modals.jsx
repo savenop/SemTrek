@@ -79,31 +79,50 @@ export default function Modals({ modalState, closeModals, saveMarks, marksState 
             <p className="text-gray-500 text-xs mt-1">{subject.name}</p>
           </div>
           
-          {/* Changed to 2-column Grid, removed scrolling completely */}
-          <div className="grid grid-cols-2 gap-4">
-            {Object.entries(subject.weights).map(([key, maxWeight]) => (
-              <div key={key} className="bg-[#0c0c0c] p-3.5 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]">
-                <label className="flex justify-between items-center text-xs font-semibold uppercase text-gray-400 mb-2.5 px-1">
-                  <span className="tracking-wider">{key}</span>
-                  <span className="text-gray-600 font-medium">Max {maxWeight}</span>
-                </label>
-                <input
-                  type="number"
-                  max={maxWeight}
-                  min="0"
-                  value={localForm[key] !== undefined ? localForm[key] : ""}
-                  onChange={(e) => handleInputChange(key, e.target.value, maxWeight)}
-                  className="w-full bg-[#1c1c1c] rounded-lg p-2.5 text-gray-200 text-sm shadow-[0_2px_8px_rgba(0,0,0,0.5)] focus:outline-none focus:ring-1 focus:ring-gray-600 focus:bg-[#222] transition-all placeholder-gray-700"
-                  placeholder="-"
-                />
-              </div>
-            ))}
+          {/* Square Cards Grid */}
+          <div className="grid grid-cols-3 gap-4">
+            {Object.entries(subject.weights).map(([key, maxWeight]) => {
+              const isFilled = localForm[key] !== undefined && localForm[key] !== "";
+              return (
+                <div 
+                  key={key} 
+                  className={`flex flex-col justify-center items-center aspect-square p-4 rounded-2xl transition-all duration-300 ${
+                    isFilled 
+                      ? 'bg-[#0a0a0a] opacity-50 hover:opacity-100 shadow-[inset_0_2px_6px_rgba(0,0,0,0.8)]' 
+                      : 'bg-[#181818] border border-gray-700/50 shadow-[0_8px_20px_rgba(0,0,0,0.4)]'
+                  }`}
+                >
+                  <span className={`text-sm font-bold uppercase tracking-widest mb-3 ${isFilled ? 'text-gray-500' : 'text-gray-400'}`}>
+                    {key}
+                  </span>
+                  
+                  <label className={`flex items-center justify-center w-full rounded-xl py-2 px-1 cursor-text transition-all ${
+                    isFilled 
+                      ? 'bg-[#111] text-gray-400 shadow-inner hover:text-gray-200' 
+                      : 'bg-[#222] text-gray-400 shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)] focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:bg-[#2a2a2a]'
+                  }`}>
+                    <input
+                      type="number"
+                      max={maxWeight}
+                      min="0"
+                      value={localForm[key] !== undefined ? localForm[key] : ""}
+                      onChange={(e) => handleInputChange(key, e.target.value, maxWeight)}
+                      className={`w-1/2 text-right bg-transparent text-xl font-bold focus:outline-none placeholder-gray-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        isFilled ? 'text-gray-400 focus:text-gray-200' : 'text-white'
+                      }`}
+                      placeholder="-"
+                    />
+                    <span className="w-1/2 text-left text-lg font-bold ml-0.5">/{maxWeight}</span>
+                  </label>
+                </div>
+              );
+            })}
           </div>
           
           <div className="mt-7 flex justify-end space-x-3 pt-2">
             <button 
               onClick={closeModals} 
-              className="px-4 py-2 text-xs text-gray-400 font-medium hover:text-gray-200 hover:bg-[#222] rounded-lg transition-all"
+              className="px-5 py-2 bg-[#1a1a1a] hover:bg-[#222] border border-gray-700 hover:border-gray-500 text-gray-300 text-xs font-medium rounded-lg transition-all shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
             >
               Cancel
             </button>

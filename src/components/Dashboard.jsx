@@ -6,28 +6,34 @@ import {
   LinearScale, BarElement, Title, RadialLinearScale, PointElement, 
   LineElement, Filler 
 } from 'chart.js';
-import { Doughnut, Bar, Radar } from 'react-chartjs-2';
+import { Doughnut, Bar, Radar, Line } from 'react-chartjs-2';
 
 ChartJS.register(
   ArcElement, Tooltip, Legend, CategoryScale, LinearScale, 
   BarElement, Title, RadialLinearScale, PointElement, LineElement, Filler
 );
 
-export default function Dashboard({ marksState }) {
+export default function Dashboard({ marksState, isProjecting, projectedState }) {
   const [viewType, setViewType] = useState('card');
   const [expandedSubject, setExpandedSubject] = useState(null);
+  const [chartType, setChartType] = useState('bar');
 
   // --- CALCULATIONS ---
-  const { totalSemesterMarks, totalAttempted, totalGained, subjectStats } = useMemo(() => {
+  const { totalSemesterMarks, totalAttempted, totalGained, subjectStats, aiCGPA } = useMemo(() => {
     let tMarks = 0;
     let tAttempted = 0;
     let tGained = 0;
     let stats = [];
+    let ePoints = 0;
+    let hasAIGrades = false;
 
     const allSubjects = [...academicData.theory, ...academicData.blended, ...academicData.practical];
+    let totalAllCredits = 0;
 
     allSubjects.forEach(sub => {
       tMarks += sub.total;
+      totalAllCredits += sub.credits;
+      
       let subAttempted = 0;
       let subGained = 0;
 
@@ -45,11 +51,21 @@ export default function Dashboard({ marksState }) {
       tGained += subGained;
       
       const efficiency = subAttempted > 0 ? Math.round((subGained / subAttempted) * 100) : 0;
+      
+      // Use AI Grade Points if available
+      if (isProjecting && projectedState?._grades && projectedState._grades[sub.id]) {
+         hasAIGrades = true;
+         const points = projectedState._grades[sub.id].point;
+         ePoints += (points * sub.credits);
+      }
+
       stats.push({ ...sub, subAttempted, subGained, efficiency });
     });
 
-    return { totalSemesterMarks: tMarks, totalAttempted: tAttempted, totalGained: tGained, subjectStats: stats };
-  }, [marksState]);
+    const calculatedCGPA = (hasAIGrades && totalAllCredits > 0) ? (ePoints / totalAllCredits).toFixed(2) : null;
+
+    return { totalSemesterMarks: tMarks, totalAttempted: tAttempted, totalGained: tGained, subjectStats: stats, aiCGPA: calculatedCGPA };
+  }, [marksState, isProjecting, projectedState]);
 
   const completionPercent = totalSemesterMarks > 0 ? Math.round((totalAttempted / totalSemesterMarks) * 100) : 0;
   const overallEfficiency = totalAttempted > 0 ? Math.round((totalGained / totalAttempted) * 100) : 0;
@@ -108,8 +124,50 @@ export default function Dashboard({ marksState }) {
     datasets: [{
       label: 'Subject Efficiency (%)',
       data: subjectStats.map(s => s.efficiency),
-      backgroundColor: subjectStats.map(s => s.efficiency >= 75 ? '#34d399' : s.efficiency >= 50 ? '#fbbf24' : '#f43f5e'),
+      backgroundColor: (context) => {
+        const chart = context.chart;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return '#8b5cf6';
+        
+        const eff = subjectStats[context.dataIndex]?.efficiency || 0;
+        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+        
+        if (eff >= 75) {
+          gradient.addColorStop(0, '#059669'); gradient.addColorStop(1, '#34d399');
+        } else if (eff >= 50) {
+          gradient.addColorStop(0, '#d97706'); gradient.addColorStop(1, '#fbbf24');
+        } else {
+          gradient.addColorStop(0, '#e11d48'); gradient.addColorStop(1, '#fb7185');
+        }
+        return gradient;
+      },
       borderRadius: 6,
+    }]
+  };
+
+  const lineData = {
+    labels: subjectStats.map(s => s.name.substring(0, 15) + '...'),
+    datasets: [{
+      label: 'Subject Efficiency (%)',
+      data: subjectStats.map(s => s.efficiency),
+      fill: true,
+      backgroundColor: (context) => {
+        const chart = context.chart;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return 'rgba(139, 92, 246, 0.2)';
+        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+        gradient.addColorStop(0, 'rgba(139, 92, 246, 0.5)');
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
+        return gradient;
+      },
+      borderColor: '#8b5cf6',
+      borderWidth: 3,
+      tension: 0.4,
+      pointBackgroundColor: '#121212',
+      pointBorderColor: '#8b5cf6',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
     }]
   };
 
@@ -172,6 +230,31 @@ export default function Dashboard({ marksState }) {
             <div className="bg-gradient-to-r from-cyan-400 to-violet-500 h-2.5 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(139,92,246,0.5)]" style={{ width: `${overallEfficiency}%` }}></div>
           </div>
           <p className="text-gray-400 mt-4 text-sm relative z-10">Gained <span className="text-gray-200 font-bold">{totalGained}</span> out of {totalAttempted} attempted marks.</p>
+          
+          <div className="mt-5 pt-4 border-t border-white/5 relative z-10 flex flex-col">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-[10px] font-bold tracking-widest text-violet-400 uppercase drop-shadow-[0_0_5px_rgba(139,92,246,0.3)]">Expected CGPA</p>
+              <span className="group relative flex items-center justify-center text-gray-400 cursor-help hover:text-white transition-colors">
+                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                 <div className="absolute -right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-3 w-80 p-4 bg-[#111] border border-gray-700/50 rounded-xl text-xs normal-case tracking-normal text-gray-300 font-medium opacity-0 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1 pointer-events-none shadow-2xl transition-all duration-300 z-[100] leading-relaxed text-left whitespace-normal">
+                    {projectedState?._explanation ? (
+                      <>
+                        <div className="mb-2 font-bold text-emerald-400 uppercase tracking-widest text-[10px]">AI Curve Insight</div>
+                        {projectedState._explanation}
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-1 font-bold text-gray-200">Relative Grading</div>
+                        Calculated using AI-generated grade points divided by total credits (23).
+                      </>
+                    )}
+                    <div className="absolute -bottom-1.5 right-3 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 bg-[#111] border-b border-r border-gray-700/50 rotate-45"></div>
+                 </div>
+              </span>
+            </div>
+            <h3 className="text-4xl font-black text-white">{aiCGPA !== null ? aiCGPA : '-'}</h3>
+          </div>
+
         </div>
       </div>
 
@@ -181,9 +264,23 @@ export default function Dashboard({ marksState }) {
         {/* Left Col: Charts */}
         <div className="lg:col-span-2 flex flex-col gap-8">
           <div className="bg-[#121212] border border-white/5 p-6 rounded-2xl shadow-xl h-[400px] flex flex-col">
-            <h3 className="text-lg font-semibold text-gray-200 mb-6 flex-shrink-0">Subject Efficiency</h3>
+            <div className="flex justify-between items-center mb-6 flex-shrink-0">
+              <h3 className="text-lg font-semibold text-gray-200">Subject Efficiency</h3>
+              <div className="flex items-center gap-1 bg-[#1a1a1a] p-1 rounded-lg border border-gray-800">
+                 <button onClick={() => setChartType('bar')} className={`p-1.5 rounded-md transition-all ${chartType === 'bar' ? 'bg-[#333] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                 </button>
+                 <button onClick={() => setChartType('line')} className={`p-1.5 rounded-md transition-all ${chartType === 'line' ? 'bg-[#333] text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                 </button>
+              </div>
+            </div>
             <div className="flex-1 relative">
-              <Bar data={barData} options={{...commonOptions, scales: { y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#6b7280' }, max: 100 }, x: { grid: { display: false }, ticks: { color: '#6b7280' } } }}} />
+              {chartType === 'bar' ? (
+                <Bar data={barData} options={{...commonOptions, scales: { y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#6b7280' }, max: 100 }, x: { grid: { display: false }, ticks: { color: '#6b7280' } } }}} />
+              ) : (
+                <Line data={lineData} options={{...commonOptions, scales: { y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#6b7280' }, max: 100 }, x: { grid: { display: false }, ticks: { color: '#6b7280' } } }}} />
+              )}
             </div>
           </div>
 
